@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Terraform Interface</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    #output { white-space: pre; border: 1px solid #ddd; padding: 10px; height: 300px; overflow-y: scroll; }
+    input[type="text"], input[type="password"] { width: 300px; padding: 8px; margin: 5px 0; }
+    button { padding: 10px 15px; margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Terraform Interface</h1>
+  <form id="terraform-form">
+    <label for="accessKey">AWS Access Key:</label>
+    <input type="text" id="accessKey" name="accessKey" required>
+    <label for="secretKey">AWS Secret Key:</label>
+    <input type="password" id="secretKey" name="secretKey" required>
+    <label for="bucketName">S3 Bucket Name:</label>
+    <input type="text" id="my_company_name" name="my_company_name" >
+    <label for="company_name">Company Name:</label>
+    <input type="text" id="company_name" name="company_name" >
+    <select id="command" name="command">
+      <option value="init">Terraform Init</option>
+      <option value="plan">Terraform Plan</option>
+      <option value="apply">Terraform Apply</option>
+      <option value="destroy">Terraform Destroy</option>
+    </select>
+    <button type="submit">Run Command</button>
+  </form>
+  <pre id="output"></pre>
+  <input type="text" id="terminal-input" placeholder="Type your input here...">
+  <script>
+    const form = document.getElementById('terraform-form');
+    const output = document.getElementById('output');
+    const terminalInput = document.getElementById('terminal-input');
+    const ws = new WebSocket('ws://localhost:3002');
+
+    ws.onmessage = (event) => {
+      output.textContent += event.data + '\n';
+      output.scrollTop = output.scrollHeight; // Auto-scroll to the bottom
+    };
+
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+      const response = await fetch(`/terraform/${data.command}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      output.textContent += JSON.stringify(result, null, 2) + '\n';
+    };
+
+    terminalInput.addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') {
+        const value = terminalInput.value;
+        ws.send(value);
+        terminalInput.value = '';
+      }
+    });
+  </script>
+</body>
+</html>
